@@ -3,10 +3,12 @@ import java.awt.*;
 import java.awt.event.*;
 
 public class Client {
-    private String nomeCliente;
+    public String nomeCliente;
+    private Server chat1;
 
-    public Client(String nomeCliente) {
+    public Client(String nomeCliente,Server chat1) {
         this.nomeCliente = nomeCliente;
+        this.chat1=chat1;
     }
 
     private JFrame clienteFrame;
@@ -50,19 +52,19 @@ public class Client {
         clienteFrame.setVisible(true);
     }
 
-    // Método para enviar mensagem
     private void enviarMensagem() {
         String mensagem = mensagemEnviar.getText();
         if (!mensagem.isEmpty()) {
-            mensagensRecebidas.append("Você: " + mensagem + "\n");
+            mensagensRecebidas.append("Tu: " + mensagem + "\n");
+            chat1.recebemsg(this.nomeCliente,mensagem);
             // Adicione aqui a lógica para enviar a mensagem para o destinatário
             mensagemEnviar.setText(""); // Limpar a área de texto após o envio
         }
     }
 
     // Método para receber mensagem (você pode chamar esse método quando receber uma mensagem)
-    private void receberMensagem(String mensagem) {
-        mensagensRecebidas.append("Eles: " + mensagem + "\n");
+    public void receberMensagem(String nomeClienteRecebe,String mensagem) {
+        mensagensRecebidas.append(nomeClienteRecebe +": " + mensagem + "\n");
     }
 }
 
