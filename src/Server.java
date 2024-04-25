@@ -31,6 +31,14 @@ public class Server {
             }
         }
     }
+    // Método para enviar uma mensagem para um ou mais clientes especificados
+    public static void sendMessageToClients(String message, List<String> recipientNames) {
+        for (ClientHandler client : clients) {
+            if (recipientNames.contains(client.getClientName())) {
+                client.sendMessage(message);
+            }
+        }
+    }
 }
 
 class ClientHandler extends Thread {
@@ -47,13 +55,31 @@ class ClientHandler extends Thread {
         this.clientName = reader.readLine();
         System.out.println(clientName + " connected: " + socket);
     }
+    public String getClientName() {
+        return clientName;
+    }
 
     public void run() {
         try {
             String message;
             while ((message = reader.readLine()) != null) {
-                System.out.println("Received from client: " + message);
-                Server.broadcast(message, this);
+                System.out.println("Received from client " + clientName + ": " + message);
+                if (message.startsWith("@")) {
+                    // Extrair os nomes dos destinatários da mensagem
+                    int spaceIndex = message.indexOf(" ");
+                    if (spaceIndex != -1) {
+                        String recipientsString = message.substring(1, spaceIndex);
+                        String messageContent = message.substring(spaceIndex + 1);
+                        List<String> recipientNames = Arrays.asList(recipientsString.split(","));
+                        System.out.println("Received private message for clients " + recipientNames + ": " + messageContent);
+                        Server.sendMessageToClients(clientName + ": " + messageContent, recipientNames);
+                    } else {
+                        System.err.println("Invalid format for private message: " + message);
+                    }
+                } else {
+                    // Mensagem não é uma mensagem privada, envie para todos os clientes
+                    Server.broadcast(clientName + ": " + message, this);
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
