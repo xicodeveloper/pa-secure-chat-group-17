@@ -94,7 +94,7 @@ public class Client {
                 try {
                     mensagemEnviar.setText(""); // Limpar a área de texto após o envio
                     mensagensRecebidas.append("Tu: " + mensagem + "\n");
-                    writer.write(mensagemComNome);
+                    writer.write(mensagem);
                     writer.newLine();
                     writer.flush();
                     } catch (IOException e) {
