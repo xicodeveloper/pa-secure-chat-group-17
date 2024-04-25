@@ -1,23 +1,56 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.*;
+import java.net.*;
 
 public class Client {
-    public String nomeCliente;
-    private Server chat1;
+    private static final String SERVER_IP = "localhost";
+    private static final int SERVER_PORT = 5000;
 
-    public Client(String nomeCliente,Server chat1) {
-        this.nomeCliente = nomeCliente;
-        this.chat1=chat1;
+    private Socket socket;
+    private BufferedReader reader;
+    private BufferedWriter writer;
+
+    private String name;
+
+    public void start(String namee) {
+        this.name= namee;
+        criarInterface();
+        try {
+            socket = new Socket(SERVER_IP, SERVER_PORT);
+            System.out.println("Connected to server...");
+
+            reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+            // Envie o nome do cliente para o servidor
+            writer.write(name);
+            writer.newLine();
+            writer.flush();
+
+            // Thread para receber mensagens do servidor
+            new Thread(() -> {
+                try {
+                    String message;
+                    while ((message = reader.readLine()) != null) {
+                        receberMensagem(message);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private JFrame clienteFrame;
     private JTextArea mensagemEnviar;
     private JTextArea mensagensRecebidas;
 
-    public void criarInterface() {
+    private void criarInterface() {
         // Criação da janela para o cliente
-        clienteFrame = new JFrame("Interface do " + nomeCliente);
+        clienteFrame = new JFrame("Interface do "+this.name);
         clienteFrame.setSize(400, 300);
         clienteFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
@@ -53,18 +86,26 @@ public class Client {
     }
 
     private void enviarMensagem() {
-        String mensagem = mensagemEnviar.getText();
-        if (!mensagem.isEmpty()) {
-            mensagensRecebidas.append("Tu: " + mensagem + "\n");
-            chat1.recebemsg(this.nomeCliente,mensagem);
-            // Adicione aqui a lógica para enviar a mensagem para o destinatário
-            mensagemEnviar.setText(""); // Limpar a área de texto após o envio
-        }
+        // Loop para enviar mensagens para o servidor
+
+            String mensagem = mensagemEnviar.getText();
+            String mensagemComNome= name +": "+ mensagem;
+            if (!mensagem.isEmpty()) {
+                try {
+                    mensagemEnviar.setText(""); // Limpar a área de texto após o envio
+                    mensagensRecebidas.append("Tu: " + mensagem + "\n");
+                    writer.write(mensagemComNome);
+                    writer.newLine();
+                    writer.flush();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                }
+            }
     }
 
     // Método para receber mensagem (você pode chamar esse método quando receber uma mensagem)
-    public void receberMensagem(String nomeClienteRecebe,String mensagem) {
-        mensagensRecebidas.append(nomeClienteRecebe +": " + mensagem + "\n");
+    private void receberMensagem(String mensagem) {
+        mensagensRecebidas.append(mensagem + "\n");
     }
 }
 

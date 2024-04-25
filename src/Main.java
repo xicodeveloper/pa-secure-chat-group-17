@@ -1,21 +1,25 @@
 public class Main {
     public static void main(String[] args) {
+        // Iniciar o servidor em uma thread separada
+        new Thread(() -> {
+            Server server = new Server();
+            server.start();
+        }).start();
+        String name="Cliente1";
+        String name1="Cliente2";
+        String name2="Cliente3";
+        // Iniciar os clientes em threads separadas
+        for (int i = 0; i < 3; i++) {
+            String finalName = name;
+            new Thread(() -> {
+                Client client = new Client();
 
-        Server chat1 = new Server();
-        // Criando interfaces para os clientes
-        Client cliente1 = new Client("Cliente 1",chat1);
-        cliente1.criarInterface();
-
-        Client cliente2 = new Client("Cliente 2",chat1);
-        cliente2.criarInterface();
-
-        Client cliente3 = new Client("Cliente 3",chat1);
-        cliente3.criarInterface();
-        chat1.clientes(cliente1,cliente2,cliente3);
+                client.start(finalName);
+            }).start();
+            name=name1;
+            if(i==1){
+                name=name2;
+            }
+        }
     }
 }
-
-
-
-
-
