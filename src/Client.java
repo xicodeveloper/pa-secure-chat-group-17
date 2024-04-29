@@ -1,20 +1,18 @@
-import java.io.IOException;
-import java.net.Socket;
+import java.io.*;
+import java.net.*;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.*;
-import java.net.*;
 import java.util.Properties;
-import java.io.*;
-import java.util.Properties;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class Client {
     private static final String SERVER_IP = "localhost";
 
     private Properties properties;
     private int port;
-
+    private boolean running = true;
     private Socket socket;
     private BufferedReader reader;
     private BufferedWriter writer;
@@ -35,6 +33,10 @@ public class Client {
     public void start(String name) {
         this.name = name;
         criarInterface();
+        conectarAoServidor();
+    }
+
+    private void conectarAoServidor() {
         try {
             socket = new Socket(SERVER_IP, port);
             System.out.println("Connected to server...");
@@ -47,16 +49,24 @@ public class Client {
             writer.flush();
 
             // Thread para receber mensagens do servidor
+
+
+// Thread para receber mensagens do servidor
             new Thread(() -> {
                 try {
                     String message;
-                    while ((message = reader.readLine()) != null) {
+                    while (running && (message = reader.readLine()) != null) {
+                        System.out.println("Mensagem recebida do servidor: " + message);
                         receberMensagem(message);
                     }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    if (running) {
+                        System.out.println("Erro ao ler mensagem do servidor: " + e.getMessage());
+                        e.printStackTrace();
+                    }
                 }
             }).start();
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -70,7 +80,15 @@ public class Client {
         // Criação da janela para o cliente
         clienteFrame = new JFrame("Interface do " + this.name);
         clienteFrame.setSize(400, 300);
-        clienteFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        // Adicionando manipulador de eventos para o fechamento da janela
+        clienteFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        clienteFrame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                sairDoChat();
+            }
+        });
 
         // Layout
         JPanel painel = new JPanel();
@@ -109,7 +127,7 @@ public class Client {
         if (!mensagem.isEmpty()) {
             try {
                 mensagemEnviar.setText(""); // Limpar a área de texto após o envio
-                mensagensRecebidas.append("Tu: " + mensagem + "\n");
+                mensagensRecebidas.append(getTimeStamp() + " Tu: " + mensagem + "\n");
                 writer.write(mensagem);
                 writer.newLine();
                 writer.flush();
@@ -119,8 +137,49 @@ public class Client {
         }
     }
 
-    // Método para receber mensagem (você pode chamar esse método quando receber uma mensagem)
+    // Método para receber mensagem (podes chamar esse método quando receber uma mensagem)
     private void receberMensagem(String mensagem) {
-        mensagensRecebidas.append(mensagem + "\n");
+        mensagensRecebidas.append(getTimeStamp() + " " + mensagem + "\n");
     }
+
+    // Método para obter um timestamp formatado
+    private String getTimeStamp() {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("[HH:mm:ss]");
+        return dateFormat.format(new Date());
+    }
+
+    // Método para sair do chat
+
+    // Método para sair do chat
+    private void sairDoChat() {
+        try {
+            // Enviar uma mensagem especial para informar ao servidor que o cliente está saindo
+            String mensagemSaida = "@exit"; // Mensagem especial para indicar saída
+            writer.write(mensagemSaida);
+            writer.newLine();
+            writer.flush();
+            // Exemplo: quando o cliente sai do chat
+
+            running = false;
+            socket.close(); // Certifique-se de fechar o socket corretamente
+
+            // Fechar streams e socket específicos do cliente
+            if (writer != null) {
+                writer.close();
+            }
+            if (reader != null) {
+                reader.close();
+            }
+            if (socket != null && !socket.isClosed()) {
+                socket.close();
+            }
+
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        // Fechar apenas a janela do cliente atual
+        clienteFrame.dispose();
+    }
+
 }

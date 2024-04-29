@@ -4,22 +4,22 @@ import java.util.*;
 
 public class Server {
     private int port;
-    public static final List<ClientHandler> clients = new ArrayList<>();
+    private List<ClientHandler> clients;
 
     public Server(int port) {
         this.port = port;
+        this.clients = new ArrayList<>();
     }
 
     public void start() {
-        try {
-            ServerSocket serverSocket = new ServerSocket(port);
+        try (ServerSocket serverSocket = new ServerSocket(port)) {
             System.out.println("Server is running on port " + port);
 
             while (true) {
                 Socket socket = serverSocket.accept();
                 System.out.println("New client connected: " + socket);
 
-                ClientHandler clientHandler = new ClientHandler(socket);
+                ClientHandler clientHandler = new ClientHandler(socket, this); // Passa uma referência de Server para ClientHandler
                 clients.add(clientHandler);
                 clientHandler.start();
             }
@@ -28,7 +28,13 @@ public class Server {
         }
     }
 
-    public static void broadcast(String message, ClientHandler excludeClient) {
+    // Remove um cliente da lista de clientes
+    public void removeClient(ClientHandler client) {
+        clients.remove(client);
+    }
+
+    // Envia uma mensagem para todos os clientes, exceto um cliente específico
+    public void broadcast(String message, ClientHandler excludeClient) {
         for (ClientHandler client : clients) {
             if (client != excludeClient) {
                 client.sendMessage(message);
@@ -36,37 +42,53 @@ public class Server {
         }
     }
 
-    public static void sendMessageToClients(String message, List<String> recipientNames) {
-        for (ClientHandler client : clients) {
+    // Envia uma mensagem para clientes específicos
+    // Envia uma mensagem para clientes específicos
+    public void sendMessageToClients(String message, List<String> recipientNames) {
+        for (Iterator<ClientHandler> iterator = clients.iterator(); iterator.hasNext();) {
+            ClientHandler client = iterator.next();
             if (recipientNames.contains(client.getClientName())) {
-                client.sendMessage(message);
+                if (client.isSocketConnected()) {
+                    client.sendMessage(message);
+                } else {
+                    clients.remove(client);
+                    iterator.remove();
+                }
             }
         }
     }
-}
 
-class ClientHandler extends Thread {
+
+    class ClientHandler extends Thread {
     private final Socket socket;
     private final BufferedReader reader;
     private final BufferedWriter writer;
-    private String clientName;
+    private final String clientName;
+    private final Server server; // Referência para a instância de Server
 
-    public ClientHandler(Socket socket) throws IOException {
+    public ClientHandler(Socket socket, Server server) throws IOException {
         this.socket = socket;
         this.reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         this.writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-        this.clientName = reader.readLine(); // Read the client's name when the connection is established
+        this.clientName = reader.readLine();
+        this.server = server; // Atribui a referência de Server
         System.out.println(clientName + " connected: " + socket);
+        sendMessage(" "+clientName+" Juntou-se ao chat.");
     }
 
     public String getClientName() {
         return clientName;
     }
-
+        public boolean isSocketConnected() {
+            return socket != null && socket.isConnected() && !socket.isClosed();
+        }
     public void run() {
         try {
             String message;
             while ((message = reader.readLine()) != null) {
+                if (message.equals("@exit")) {
+                    break;
+                }
                 System.out.println("Received from client " + clientName + ": " + message);
                 if (message.startsWith("@")) {
                     int spaceIndex = message.indexOf(" ");
@@ -75,12 +97,12 @@ class ClientHandler extends Thread {
                         String messageContent = message.substring(spaceIndex + 1);
                         List<String> recipientNames = Arrays.asList(recipientsString.split(","));
                         System.out.println("Received private message for clients " + recipientNames + ": " + messageContent);
-                        Server.sendMessageToClients(clientName + ": " + messageContent, recipientNames);
+                        server.sendMessageToClients(clientName + ": " + messageContent, recipientNames); // Usa a referência de Server
                     } else {
                         System.err.println("Invalid format for private message: " + message);
                     }
                 } else {
-                    Server.broadcast(clientName + ": " + message, this);
+                    server.broadcast(clientName + ": " + message, this); // Usa a referência de Server
                 }
             }
         } catch (IOException e) {
@@ -89,7 +111,8 @@ class ClientHandler extends Thread {
             try {
                 socket.close();
                 System.out.println("Client disconnected: " + socket);
-                Server.clients.remove(this);
+                server.removeClient(this); // Usa a referência de Server para remover o cliente
+                server.broadcast(clientName + " saiu do chat.", this);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -98,11 +121,16 @@ class ClientHandler extends Thread {
 
     public void sendMessage(String message) {
         try {
-            writer.write(message);
-            writer.newLine();
-            writer.flush();
+            if (socket.isConnected() && !socket.isClosed()) { // Verifica se o socket está conectado e não fechado
+                writer.write(message);
+                writer.newLine();
+                writer.flush();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+    }
 }
+
+
