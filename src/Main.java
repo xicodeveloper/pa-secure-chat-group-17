@@ -1,34 +1,26 @@
-import java.io.*;
-import java.util.Properties;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Main {
     public static void main(String[] args) {
-        try {
-            // Carregar configurações do arquivo project.properties
-            Properties properties = new Properties();
-            properties.load(new FileInputStream("project.properties"));
-            int port = Integer.parseInt(properties.getProperty("port"));
-
-            // Iniciar o servidor em uma thread separada
+        Lock trinco = new ReentrantLock();
+        // Iniciar o servidor em uma thread separada
+        new Thread(() -> {
+            Server server = new Server();
+            server.start(trinco);
+        }).start();
+        // Iniciar os clientes em threads separadas
+        String[] nomes ={"Cliente1", "Cliente2", "Cliente3", "Cliente4"};
+        int numeroDeClientes=nomes.length;
+        numeroDeClientes--;
+        System.out.println(numeroDeClientes);
+        for (int i = 0; i < numeroDeClientes+1; i++) {
+            String finalName =nomes[i];
+            int finalNumeroDeClientes = numeroDeClientes;
             new Thread(() -> {
-                Server server = new Server(port);
-                server.start();
+                Client client = new Client();
+                client.start(finalName, finalNumeroDeClientes);
             }).start();
-
-            // Nomes dos clientes
-            String[] names = {"Cliente1", "Cliente2", "Cliente3", "Cliente4"};
-
-            // Iniciar os clientes em threads separadas
-            for (int i = 0; i < 4; i++) {
-                final String finalName = names[i];
-                new Thread(() -> {
-                    Client client = new Client();
-                    client.start(finalName);
-                }).start();
-            }
-            new LoginInterface();
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 }
