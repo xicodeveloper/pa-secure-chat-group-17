@@ -1,29 +1,34 @@
+import java.io.*;
+import java.util.Properties;
+
 public class Main {
     public static void main(String[] args) {
-        // Iniciar o servidor em uma thread separada
-        new Thread(() -> {
-            Server server = new Server();
-            server.start();
-        }).start();
-        String name="Cliente1";
-        String name1="Cliente2";
-        String name2="Cliente3";
-        String name3="Cliente4";
-        // Iniciar os clientes em threads separadas
-        for (int i = 0; i < 4; i++) {
-            String finalName = name;
-            new Thread(() -> {
-                Client client = new Client();
+        try {
+            // Carregar configurações do arquivo project.properties
+            Properties properties = new Properties();
+            properties.load(new FileInputStream("project.properties"));
+            int port = Integer.parseInt(properties.getProperty("port"));
 
-                client.start(finalName);
+            // Iniciar o servidor em uma thread separada
+            new Thread(() -> {
+                Server server = new Server(port);
+                server.start();
             }).start();
-            name=name1;
-            if(i==1){
-                name=name2;
+
+            // Nomes dos clientes
+            String[] names = {"Cliente1", "Cliente2", "Cliente3", "Cliente4"};
+
+            // Iniciar os clientes em threads separadas
+            for (int i = 0; i < 4; i++) {
+                final String finalName = names[i];
+                new Thread(() -> {
+                    Client client = new Client();
+                    client.start(finalName);
+                }).start();
             }
-            if(i==2){
-                name=name3;
-            }
+            new LoginInterface();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }

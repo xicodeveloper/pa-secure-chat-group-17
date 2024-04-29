@@ -1,12 +1,19 @@
+import java.io.IOException;
+import java.net.Socket;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import java.net.*;
+import java.util.Properties;
+import java.io.*;
+import java.util.Properties;
 
 public class Client {
     private static final String SERVER_IP = "localhost";
-    private static final int SERVER_PORT = 5000;
+
+    private Properties properties;
+    private int port;
 
     private Socket socket;
     private BufferedReader reader;
@@ -14,11 +21,22 @@ public class Client {
 
     private String name;
 
-    public void start(String namee) {
-        this.name= namee;
+    public Client() {
+        // Inicialização das propriedades
+        try {
+            properties = new Properties();
+            properties.load(new FileInputStream("project.properties"));
+            port = Integer.parseInt(properties.getProperty("port"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void start(String name) {
+        this.name = name;
         criarInterface();
         try {
-            socket = new Socket(SERVER_IP, SERVER_PORT);
+            socket = new Socket(SERVER_IP, port);
             System.out.println("Connected to server...");
 
             reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -50,14 +68,13 @@ public class Client {
 
     private void criarInterface() {
         // Criação da janela para o cliente
-        clienteFrame = new JFrame("Interface do "+this.name);
+        clienteFrame = new JFrame("Interface do " + this.name);
         clienteFrame.setSize(400, 300);
         clienteFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         // Layout
         JPanel painel = new JPanel();
         painel.setLayout(new BorderLayout());
-
 
         // Área para exibir mensagens recebidas
         mensagensRecebidas = new JTextArea(10, 30);
@@ -87,20 +104,19 @@ public class Client {
 
     private void enviarMensagem() {
         // Loop para enviar mensagens para o servidor
-
-            String mensagem = mensagemEnviar.getText();
-            String mensagemComNome= name +": "+ mensagem;
-            if (!mensagem.isEmpty()) {
-                try {
-                    mensagemEnviar.setText(""); // Limpar a área de texto após o envio
-                    mensagensRecebidas.append("Tu: " + mensagem + "\n");
-                    writer.write(mensagem);
-                    writer.newLine();
-                    writer.flush();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                }
+        String mensagem = mensagemEnviar.getText();
+        String mensagemComNome = name + ": " + mensagem;
+        if (!mensagem.isEmpty()) {
+            try {
+                mensagemEnviar.setText(""); // Limpar a área de texto após o envio
+                mensagensRecebidas.append("Tu: " + mensagem + "\n");
+                writer.write(mensagem);
+                writer.newLine();
+                writer.flush();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
+        }
     }
 
     // Método para receber mensagem (você pode chamar esse método quando receber uma mensagem)
@@ -108,4 +124,3 @@ public class Client {
         mensagensRecebidas.append(mensagem + "\n");
     }
 }
-

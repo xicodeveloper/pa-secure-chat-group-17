@@ -3,13 +3,17 @@ import java.net.*;
 import java.util.*;
 
 public class Server {
-    private static final int PORT = 5000;
+    private int port;
     public static final List<ClientHandler> clients = new ArrayList<>();
+
+    public Server(int port) {
+        this.port = port;
+    }
 
     public void start() {
         try {
-            ServerSocket serverSocket = new ServerSocket(PORT);
-            System.out.println("Server is running on port " + PORT);
+            ServerSocket serverSocket = new ServerSocket(port);
+            System.out.println("Server is running on port " + port);
 
             while (true) {
                 Socket socket = serverSocket.accept();
@@ -31,7 +35,7 @@ public class Server {
             }
         }
     }
-    // Método para enviar uma mensagem para um ou mais clientes especificados
+
     public static void sendMessageToClients(String message, List<String> recipientNames) {
         for (ClientHandler client : clients) {
             if (recipientNames.contains(client.getClientName())) {
@@ -51,10 +55,10 @@ class ClientHandler extends Thread {
         this.socket = socket;
         this.reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         this.writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-        // Ler o nome do cliente quando a conexão é estabelecida
-        this.clientName = reader.readLine();
+        this.clientName = reader.readLine(); // Read the client's name when the connection is established
         System.out.println(clientName + " connected: " + socket);
     }
+
     public String getClientName() {
         return clientName;
     }
@@ -65,7 +69,6 @@ class ClientHandler extends Thread {
             while ((message = reader.readLine()) != null) {
                 System.out.println("Received from client " + clientName + ": " + message);
                 if (message.startsWith("@")) {
-                    // Extrair os nomes dos destinatários da mensagem
                     int spaceIndex = message.indexOf(" ");
                     if (spaceIndex != -1) {
                         String recipientsString = message.substring(1, spaceIndex);
@@ -77,7 +80,6 @@ class ClientHandler extends Thread {
                         System.err.println("Invalid format for private message: " + message);
                     }
                 } else {
-                    // Mensagem não é uma mensagem privada, envie para todos os clientes
                     Server.broadcast(clientName + ": " + message, this);
                 }
             }
@@ -104,4 +106,3 @@ class ClientHandler extends Thread {
         }
     }
 }
-
