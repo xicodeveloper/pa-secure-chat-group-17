@@ -32,15 +32,21 @@ public class Client {
     private SecretKey sharedSecretKey;
     private boolean keysEstado = true;
     private boolean running = true;
-    private SecretKey[] chavesScretas;
-    private String[] nomeCliente;
-    int i=0;
+
+    private  final  LinkedList<SecretKey> chavesScretas = new LinkedList<>();
+    private final LinkedList<String> nomeCliente = new LinkedList<>();;
 
     public void start(String namee,int numeroDeClientes) {
         this.numeroDeClientes=numeroDeClientes;
-        chavesScretas = new SecretKey[numeroDeClientes];
-        nomeCliente = new String[numeroDeClientes];
         this.name=namee;
+        for (int i = 0; i < numeroDeClientes; i++) {
+            nomeCliente.add("vazio");
+            chavesScretas.add(null);
+        }
+        System.out.println("Elementos da lista nomeCliente:");
+        for (String item : nomeCliente) {
+            System.out.println(item);
+        }
         criarInterface();
         try {
             Properties properties = new Properties();
@@ -61,7 +67,7 @@ public class Client {
                     out.writeObject(publicKey);
                     out.flush();
 
-                    while(chavesScretas[numeroDeClientes-1]==null && nomeCliente[numeroDeClientes-1]==null ) {
+                    while(Objects.equals(nomeCliente.get(numeroDeClientes-1), "vazio")) {
                         PublicKey otherPublicKeys = (PublicKey) in.readObject();
                         String nomee = (String) in.readObject();
                         KeyAgreement keyAgreement = KeyAgreement.getInstance("DH");
@@ -74,10 +80,10 @@ public class Client {
 
                         for (int k = 0; k < numeroDeClientes; k++) {
                             // Verificar se a posição do array está vazia
-                            if (chavesScretas[k] == null && nomeCliente[k] == null) {
+                            if (Objects.equals(nomeCliente.get(k), "vazio")) {
                                 // Se estiver vazia, armazenar a chave pública nesta posição
-                                nomeCliente[k] = nomee;
-                                chavesScretas[k] = sharedSecretKey; // substitua chavePublica pela chave pública que você deseja armazenar
+                                nomeCliente.set(k,nomee);
+                                chavesScretas.set(k,sharedSecretKey); // substitua chavePublica pela chave pública que você deseja armazenar
                                 break; // Sair do loop após armazenar a chave pública
                             }
                         }
@@ -100,25 +106,15 @@ public class Client {
             while(running) {
                 try {
                     // Thread para receber mensagens do servidor
-                    String message = (String) in.readObject();
-                    while (message != null) {
+
+                        String message = (String) in.readObject();
+                        System.out.println(message);
                         String[] partes = message.split(":", 2);
                         String cliente = partes[0];
                         String mensagem = partes[1];
-                        if (mensagem.equals("@exit")) {
-                            // Se a mensagem indicar que o cliente saiu, exibir uma mensagem na interface do cliente
-                            SwingUtilities.invokeLater(new Runnable() {
-                                @Override
-                                public void run() {
-                                    mensagensRecebidas.append(getTimeStamp()+" "+cliente + " saiu do chat.\n");
-                                }
-                            });
-                        } else {
-                            // Se for uma mensagem normal, processá-la normalmente
-                            receberMensagem(cliente, mensagem);
-                        }
-                        message=null;
-                    }
+                        receberMensagem(cliente, mensagem);
+
+
                 } catch (SocketException se) {
                     // Socket fechado, o cliente saiu
                     System.out.println("O cliente saiu do chat.");
@@ -190,18 +186,16 @@ public class Client {
         if (!mensagem.isEmpty()) {
             try {
                 mensagemEnviar.setText(""); // Limpar a área de texto após o envio
-
-
-
                 mensagensRecebidas.append(getTimeStamp() + "Tu: " + mensagem + "\n");
                 if (mensagem.equals("@exit")) {
+                    mensagem = this.name + ":" + mensagem;
                     out.writeObject(mensagem);
                     out.flush();
                     socket.close();
-                    mensagensRecebidas.append(getTimeStamp()+  nomeCliente+"LEFT CHAT");
+                    clienteFrame.dispose();
                     return;
                 }
-                if (mensagem.startsWith("@")) {
+                else if (mensagem.startsWith("@")) {
                     // Extrair os nomes dos destinatários da mensagem
                     int spaceIndex = mensagem.indexOf(" ");
                     if (spaceIndex != -1) {
@@ -212,11 +206,11 @@ public class Client {
                         byte[] mensagemBytes = mensagem.getBytes();
                         for (int j = 0; j < numeroDeClientes; j++) {
                             for (int k = 0; k < recipientNames.size(); k++) {
-                                if (Objects.equals(nomeCliente[j], recipientNames.get(k))) {
-                                    sharedSecretKey = chavesScretas[j];
+                                if (Objects.equals(nomeCliente.get(j), recipientNames.get(k))) {
+                                    sharedSecretKey = chavesScretas.get(j);
                                     byte[] ciphertext = encryptWithSecretKey(mensagemBytes, sharedSecretKey);
                                     String ciphertextString = ciphertextToString(ciphertext);
-                                    String ClienteMSG = nomeCliente[j] + ":" + ciphertextString;
+                                    String ClienteMSG = nomeCliente.get(j) + ":" + ciphertextString;
                                     out.writeObject(ClienteMSG);
                                     out.flush();
                                 }
@@ -229,11 +223,11 @@ public class Client {
                     mensagem = this.name + ": " + mensagem;
                     byte[] mensagemBytes = mensagem.getBytes();
                     for (int j = 0; j < numeroDeClientes; j++) {
-                        sharedSecretKey = chavesScretas[j];
+                        sharedSecretKey = chavesScretas.get(j);
                         // Criptografe a mensagem usando a chave secreta compartilhada
                         byte[] ciphertext = encryptWithSecretKey(mensagemBytes, sharedSecretKey);
                         String ciphertextString = ciphertextToString(ciphertext);
-                        String ClienteMSG = nomeCliente[j] + ":" + ciphertextString;
+                        String ClienteMSG = nomeCliente.get(j) + ":" + ciphertextString;
                         out.writeObject(ClienteMSG);
                         out.flush();
                     }
@@ -250,17 +244,24 @@ public class Client {
     // Método para receber mensagem ( pode chamar esse método quando receber uma mensagem)
     // Adicione este método à classe Client
     private void clienteSaiu(String cliente) {
+        for (int j = 0; j < numeroDeClientes; j++) {
+            if (Objects.equals(nomeCliente.get(j), cliente)) {
+                chavesScretas.remove(j);
+                nomeCliente.remove(j);
+                this.numeroDeClientes--;
+            }
+        }
         mensagensRecebidas.append(getTimeStamp() + cliente + " saiu do chat.\n");
     }
 
     // Modifique o método receberMensagem para lidar com mensagens indicando que um cliente saiu
     private void receberMensagem(String cliente, String mensagem) throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
-        if (mensagem.equals(cliente + " saiu do chat")) {
+        if (mensagem.equals(" saiu do chat")) {
             clienteSaiu(cliente);
         } else {
             for (int j = 0; j < numeroDeClientes; j++) {
-                if (Objects.equals(nomeCliente[j], cliente)) {
-                    sharedSecretKey = chavesScretas[j];
+                if (Objects.equals(nomeCliente.get(j), cliente)) {
+                    sharedSecretKey = chavesScretas.get(j);
                 }
             }
             byte[] ciphertextReceived = stringToCiphertext(mensagem);

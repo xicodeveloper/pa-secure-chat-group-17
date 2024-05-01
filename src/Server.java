@@ -44,6 +44,11 @@ public class Server {
             }
         }
     }
+    public static void broadcastGlobal(String message) {
+        for (ClientHandler client : clients) {
+                client.sendMessage(message);
+        }
+    }
 }
 
 class ClientHandler extends Thread {
@@ -93,29 +98,30 @@ class ClientHandler extends Thread {
                     trinco.unlock(); // Libera o trinco
                 }
                 if (input instanceof String) {
-                    String messagee = (String) input;
-                    System.out.println("Received from client " + clientName + ": " + messagee);
-                    String message = messagee;
-                    if (messagee.equals("@exit")) {
-                        System.out.println("Client " + clientName + " exited.");
-                        Server.clients.remove(this); // Remove o cliente da lista de clientes
-                        Server.broadcast(clientName + " saiu do chat", clientName);
+                    String message = (String) input;
+                    System.out.println("Received from client " + clientName + ": " + message);
+                    // Mensagem não é uma mensagem privada, envie para todos os clientes
+                    String[] partes = message.split(":", 2);
+                    String cliente = partes[0];
+                    String mensagem = partes[1];
+                    System.out.println(mensagem);
+                    if (mensagem.equals("@exit")) {
+                        System.out.println("Client " + cliente + " exited.");
+                        int i= 0;
+                        for (ClientHandler client : Server.clients) {
+                            if (client.getName().equals(cliente)) {
+                                Server.clients.remove(i); // Remove o cliente da lista de clientes
+                            }
+                            i++;
+                        }
+                        Server.broadcastGlobal(cliente + ": saiu do chat");
                         break; // Sai do loop e encerra a thread
-                    }
-                    while (message != null) {
-                        // Mensagem não é uma mensagem privada, envie para todos os clientes
-                        String[] partes = message.split(":", 2);
-                        String cliente = partes[0];
-                        String mensagem = partes[1];
+                    }else{
                         Server.broadcast(clientName + ":" + mensagem, cliente);
-                        message = null;
                     }
-
                 }
             } catch (IOException | ClassNotFoundException e) {
                 throw new RuntimeException(e);
-            }finally {
-                Server.broadcast(clientName , " saiu do chat.");
             }
         }
     }
