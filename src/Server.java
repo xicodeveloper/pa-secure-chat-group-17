@@ -46,7 +46,7 @@ public class Server {
     }
     public static void broadcastGlobal(String message) {
         for (ClientHandler client : clients) {
-                client.sendMessage(message);
+            client.sendMessage(message);
         }
     }
 }
@@ -105,6 +105,23 @@ class ClientHandler extends Thread {
                     String cliente = partes[0];
                     String mensagem = partes[1];
                     System.out.println(mensagem);
+                    if (message.startsWith("@")) {
+                        int spaceIndex = message.indexOf(" ");
+                        if (spaceIndex != -1) {
+                            String recipientsString = message.substring(1, spaceIndex);
+                            String messageContent = message.substring(spaceIndex + 1);
+                            List<String> recipientNames = Arrays.asList(recipientsString.split(","));
+                            // Envia a mensagem apenas para os destinatários especificados
+                            for (String recipient : recipientNames) {
+                                Server.broadcast(clientName + ":" + messageContent, recipient.trim());
+                            }
+                        } else {
+                            System.err.println("Invalid format for private message: " + message);
+                        }
+                    } else {
+                        // Envia a mensagem para todos os clientes
+                        Server.broadcast(clientName + ":" + message, null);
+                    }
                     if (mensagem.equals("@exit")) {
                         System.out.println("Client " + cliente + " exited.");
                         int i= 0;
