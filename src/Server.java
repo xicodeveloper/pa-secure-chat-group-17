@@ -5,14 +5,60 @@ import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
 
-public class Server {
-
-
+public class Server{
     public static final LinkedList<ClientHandler> clients = new LinkedList<>();
+
+    private JFrame serverFrame;
+    private JButton criarClienteButton;
+    private JTextArea mensagemEnviar;
+    private static int nrClientesMenos1;
+
+    String nomeClienteNovo;
+
+    private void serverInterface() {
+        serverFrame = new JFrame("Interface do Server");
+        serverFrame.setSize(300, 150);
+        serverFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        // Cria o botão "criar novo cliente"
+        criarClienteButton = new JButton("Criar Novo Cliente");
+
+        // Adiciona um ouvinte de evento ao botão
+        JPanel painel = new JPanel();
+        painel.setLayout(new BorderLayout());
+
+        // Área para escrever mensagens
+        mensagemEnviar = new JTextArea(5, 30);
+        painel.add(mensagemEnviar);
+
+        criarClienteButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                nomeClienteNovo = mensagemEnviar.getText();
+                Main.criarCliente(nomeClienteNovo, nrClientesMenos1);
+                mensagemEnviar.setText("");
+                nrClientesMenos1++;
+            }
+        });
+        painel.add(criarClienteButton, BorderLayout.SOUTH);
+
+        // Adiciona o painel à interface do servidor
+        serverFrame.add(painel);
+
+        // Exibe a interface do servidor
+        serverFrame.setVisible(true);
+    }
+    public static void downnrClientes(){
+        nrClientesMenos1--;
+    }
 
     public void start(Lock trinco) {
         try {
+            serverInterface();
             Properties properties = new Properties();
             properties.load(new FileInputStream("project.properties"));
             int port = Integer.parseInt(properties.getProperty("port"));
@@ -23,6 +69,7 @@ public class Server {
                 ClientHandler clientHandler = new ClientHandler(socket, trinco);
                 clients.add(clientHandler);
                 clientHandler.start();
+                broadcastGlobalExcept(nomeClienteNovo+": entrou no chat",clientHandler);
             }
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
@@ -47,6 +94,13 @@ public class Server {
     public static void broadcastGlobal(String message) {
         for (ClientHandler client : clients) {
                 client.sendMessage(message);
+        }
+    }
+    public static void broadcastGlobalExcept(String message,ClientHandler excludeClient) {
+        for (ClientHandler client : clients) {
+            if (client != excludeClient) {
+                client.sendMessage(message);
+            }
         }
     }
 }
@@ -99,31 +153,37 @@ class ClientHandler extends Thread {
                 }
                 if (input instanceof String) {
                     String message = (String) input;
-                    System.out.println("Received from client " + clientName + ": " + message);
-                    // Mensagem não é uma mensagem privada, envie para todos os clientes
-                    String[] partes = message.split(":", 2);
-                    String cliente = partes[0];
-                    String mensagem = partes[1];
-                    System.out.println(mensagem);
-                    if (mensagem.equals("@exit")) {
-                        System.out.println("Client " + cliente + " exited.");
-                        int i= 0;
-                        for (ClientHandler client : Server.clients) {
-                            if (client.getName().equals(cliente)) {
-                                Server.clients.remove(i); // Remove o cliente da lista de clientes
+                    if(Objects.equals(message,"@newUser")){
+                        Server.broadcastGlobalExcept("@newUser",this);
+                    }else {
+                        System.out.println("Received from client " + clientName + ": " + message);
+                        // Mensagem não é uma mensagem privada, envie para todos os clientes
+                        String[] partes = message.split(":", 2);
+                        String cliente = partes[0];
+                        String mensagem = partes[1];
+                        System.out.println(mensagem);
+                        if (mensagem.equals("@exit")) {
+                            System.out.println("Client " + cliente + " exited.");
+                            Iterator<ClientHandler> iterator = Server.clients.iterator();
+                            while (iterator.hasNext()) {
+                                ClientHandler client = iterator.next();
+                                if (client.getClientName().equals(cliente)) {
+                                    iterator.remove(); // Remove o cliente da lista de clientes
+                                }
                             }
-                            i++;
+                            Server.broadcastGlobal(cliente + ": saiu do chat");
+                            Server.downnrClientes();
+                            break; // Sai do loop e encerra a thread
+                        } else {
+                            Server.broadcast(clientName + ":" + mensagem, cliente);
                         }
-                        Server.broadcastGlobal(cliente + ": saiu do chat");
-                        break; // Sai do loop e encerra a thread
-                    }else{
-                        Server.broadcast(clientName + ":" + mensagem, cliente);
                     }
                 }
             } catch (IOException | ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }
         }
+        return;
     }
 
     public void sendKey(PublicKey publicKey, String clienttName) {
@@ -142,7 +202,11 @@ class ClientHandler extends Thread {
             writer.writeObject(message);
             writer.flush();
         } catch (IOException e) {
-            e.printStackTrace();
+            if (e instanceof SocketException) {
+                System.out.println("Erro ao enviar mensagem para o cliente " + clientName + ": conexão fechada pelo cliente.");
+            } else {
+                e.printStackTrace();
+            }
         }
     }
 }

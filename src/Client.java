@@ -17,6 +17,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 
 public class Client {
@@ -30,22 +32,24 @@ public class Client {
     private int numeroDeClientes;
     private KeyPair keyPair;
     private SecretKey sharedSecretKey;
-    private boolean keysEstado = true;
     private boolean running = true;
+    private PublicKey publicKey;
 
     private  final  LinkedList<SecretKey> chavesScretas = new LinkedList<>();
-    private final LinkedList<String> nomeCliente = new LinkedList<>();;
+    private final LinkedList<String> nomeCliente = new LinkedList<>();
 
-    public void start(String namee,int numeroDeClientes) {
+
+    public void start(String namee, int numeroDeClientes) {
         this.numeroDeClientes=numeroDeClientes;
         this.name=namee;
-        for (int i = 0; i < numeroDeClientes; i++) {
-            nomeCliente.add("vazio");
+
+        if(numeroDeClientes==0){
+            nomeCliente.add(null);
             chavesScretas.add(null);
         }
-        System.out.println("Elementos da lista nomeCliente:");
-        for (String item : nomeCliente) {
-            System.out.println(item);
+        for (int i = 0; i < numeroDeClientes; i++) {
+            nomeCliente.add(null);
+            chavesScretas.add(null);
         }
         criarInterface();
         try {
@@ -57,77 +61,87 @@ public class Client {
             in = new ObjectInputStream(socket.getInputStream());
             out.writeObject(name);
             out.flush();
-            if (keysEstado) {
-                try {
-                    KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("DH");
-                    keyPairGenerator.initialize(2048);
-                    keyPair = keyPairGenerator.generateKeyPair();
-                    // Obter a chave pública do cliente
-                    PublicKey publicKey = keyPair.getPublic();
-                    out.writeObject(publicKey);
-                    out.flush();
-
-                    while(Objects.equals(nomeCliente.get(numeroDeClientes-1), "vazio")) {
-                        PublicKey otherPublicKeys = (PublicKey) in.readObject();
-                        String nomee = (String) in.readObject();
-                        KeyAgreement keyAgreement = KeyAgreement.getInstance("DH");
-                        keyAgreement.init(keyPair.getPrivate());
-                        keyAgreement.doPhase(otherPublicKeys, true);
-                        // Gerar chave secreta compartilhada com algoritmo Triple DES
-                        byte[] sharedSecret = keyAgreement.generateSecret();
-                        sharedSecretKey = new SecretKeySpec(sharedSecret, 0, 24, "DESede");
-                        System.out.println("Chave secreta compartilhada gerada com outro cliente.");
-
-                        for (int k = 0; k < numeroDeClientes; k++) {
-                            // Verificar se a posição do array está vazia
-                            if (Objects.equals(nomeCliente.get(k), "vazio")) {
-                                // Se estiver vazia, armazenar a chave pública nesta posição
-                                nomeCliente.set(k,nomee);
-                                chavesScretas.set(k,sharedSecretKey); // substitua chavePublica pela chave pública que você deseja armazenar
-                                break; // Sair do loop após armazenar a chave pública
-                            }
-                        }
-                        keysEstado=false;
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-
-            // Display a message when the client joins the chat
-            SwingUtilities.invokeLater(new Runnable() {
-                @Override
-                public void run() {
-                    mensagensRecebidas.append(getTimeStamp()+" "+  name + " joined the chat.\n");
-                }
-            });
-
-            // Loop para receber mensagens do servidor enquanto o cliente estiver em execução
-            while(running) {
-                try {
-                    // Thread para receber mensagens do servidor
-
-                        String message = (String) in.readObject();
-                        System.out.println(message);
-                        String[] partes = message.split(":", 2);
-                        String cliente = partes[0];
-                        String mensagem = partes[1];
-                        receberMensagem(cliente, mensagem);
-
-
-                } catch (SocketException se) {
-                    // Socket fechado, o cliente saiu
-                    System.out.println("O cliente saiu do chat.");
-                    mensagensRecebidas.append(getTimeStamp()+" "+ name + " saiu do chat.\n");
-                    break;
-                }
+            try {
+                KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("DH");
+                keyPairGenerator.initialize(2048);
+                keyPair = keyPairGenerator.generateKeyPair();
+                // Obter a chave pública do cliente
+                publicKey = keyPair.getPublic();
+                out.writeObject("@newUser");
+                out.flush();
+                Thread.sleep(500);
+                loop();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         } catch (IOException e) {
             e.printStackTrace();
-        } catch (ClassNotFoundException | NoSuchPaddingException | IllegalBlockSizeException |
-                 NoSuchAlgorithmException | BadPaddingException | InvalidKeyException e) {
-            throw new RuntimeException(e);
         }
+    }
+    private void atribuirChavesSecretas() throws IOException, ClassNotFoundException, NoSuchAlgorithmException, InvalidKeyException {
+        out.writeObject(publicKey);
+        out.flush();
+        while(Objects.equals(nomeCliente.getLast(), null) && numeroDeClientes!=0) {
+            PublicKey otherPublicKeys = (PublicKey) in.readObject();
+            String nomee = (String) in.readObject();
+            KeyAgreement keyAgreement = KeyAgreement.getInstance("DH");
+            keyAgreement.init(keyPair.getPrivate());
+            keyAgreement.doPhase(otherPublicKeys, true);
+            // Gerar chave secreta compartilhada com algoritmo Triple DES
+            byte[] sharedSecret = keyAgreement.generateSecret();
+            sharedSecretKey = new SecretKeySpec(sharedSecret, 0, 24, "DESede");
+            System.out.println("Chave secreta compartilhada gerada com outro cliente.");
+            for (int k = 0; k < numeroDeClientes; k++) {
+                // Verificar se a posição do array está vazia
+                if(Objects.equals(nomeCliente.get(k), nomee)){
+                    break;
+                }
+                if (Objects.equals(nomeCliente.get(k), null)) {
+                    nomeCliente.set(k,nomee);
+                    chavesScretas.set(k,sharedSecretKey); // substitua chavePublica pela chave pública que você deseja armazenar
+                    break; // Sair do loop após armazenar a chave pública
+                }
+            }
+        }
+    }
+    private void loop() throws IOException, NoSuchAlgorithmException, InvalidKeyException, ClassNotFoundException {
+        atribuirChavesSecretas();
+        // Loop para receber mensagens do servidor enquanto o cliente estiver em execução
+        while(running) {
+            if (socket.isClosed()) {
+                return;
+            }
+            try {
+                String message = (String) in.readObject();
+                if(Objects.equals(message, "@newUser"))
+                {
+                    numeroDeClientes++;
+                    if (numeroDeClientes > 1) {
+                        nomeCliente.add(null);
+                        chavesScretas.add(null);
+                    }
+                    break;
+                }
+                String[] partes = message.split(":", 2);
+                String cliente = partes[0];
+                String mensagem = partes[1];
+                receberMensagem(cliente, mensagem);
+
+
+            } catch (IOException | ClassNotFoundException se) {
+                // Socket fechado, o cliente saiu
+                System.out.println("O cliente saiu do chat.");
+                mensagensRecebidas.append(getTimeStamp()+" "+ name + " saiu do chat.\n");
+                break;
+            } catch (NoSuchPaddingException | InvalidKeyException | BadPaddingException | NoSuchAlgorithmException |
+                     IllegalBlockSizeException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (socket.isClosed()) {
+            return;
+        }
+        loop();
     }
 
     private JFrame clienteFrame;
@@ -188,11 +202,7 @@ public class Client {
                 mensagemEnviar.setText(""); // Limpar a área de texto após o envio
                 mensagensRecebidas.append(getTimeStamp() + "Tu: " + mensagem + "\n");
                 if (mensagem.equals("@exit")) {
-                    mensagem = this.name + ":" + mensagem;
-                    out.writeObject(mensagem);
-                    out.flush();
-                    socket.close();
-                    clienteFrame.dispose();
+                    sairDoChat();
                     return;
                 }
                 else if (mensagem.startsWith("@")) {
@@ -258,7 +268,9 @@ public class Client {
     private void receberMensagem(String cliente, String mensagem) throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
         if (mensagem.equals(" saiu do chat")) {
             clienteSaiu(cliente);
-        } else {
+        } else if(mensagem.equals(" entrou no chat")){
+            mensagensRecebidas.append(getTimeStamp() + cliente + " entrou no chat\n");
+        }else{
             for (int j = 0; j < numeroDeClientes; j++) {
                 if (Objects.equals(nomeCliente.get(j), cliente)) {
                     sharedSecretKey = chavesScretas.get(j);
@@ -311,7 +323,7 @@ public class Client {
     private void sairDoChat() {
         try {
             // Enviar uma mensagem especial para informar ao servidor que o cliente está saindo
-            String mensagemSaida = "@exit"; // Mensagem especial para indicar saída
+            String mensagemSaida = this.name + ":" + "@exit";
             out.writeObject(mensagemSaida);
             out.flush();
             mensagensRecebidas.append(getTimeStamp() + nomeCliente+ "Saiu" + "\n");
@@ -335,7 +347,6 @@ public class Client {
         // Fechar apenas a janela do cliente atual
         clienteFrame.dispose();
     }
-
 }
 
 

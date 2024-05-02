@@ -9,18 +9,14 @@ public class Main {
             Server server = new Server();
             server.start(trinco);
         }).start();
-        // Iniciar os clientes em threads separadas
-        String[] nomes ={"Cliente1", "Cliente2", "Cliente3", "Cliente4"};
-        int numeroDeClientes=nomes.length;
-        numeroDeClientes--;
-        System.out.println(numeroDeClientes);
-        for (int i = 0; i < numeroDeClientes+1; i++) {
-            String finalName =nomes[i];
-            int finalNumeroDeClientes = numeroDeClientes;
-            new Thread(() -> {
-                Client client = new Client();
-                client.start(finalName, finalNumeroDeClientes);
-            }).start();
-        }
+    }
+
+    public static void criarCliente(String nomeCliente,int numeroClientes) {
+
+        new Thread(() -> {
+            Client client = new Client();
+            client.start(nomeCliente, numeroClientes);
+        }).start();
+
     }
 }
