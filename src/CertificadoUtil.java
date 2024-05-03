@@ -13,12 +13,12 @@ public class CertificadoUtil {
     private PrivateKey chavePrivada;
     public boolean assinado;
 
-    public CertificadoUtil(String identificacaoRequerente, String identificacaoCertificado, PrivateKey chavePrivada, PublicKey chavePublica, String algoritmoAssinatura) {
+    public CertificadoUtil(String identificacaoRequerente, String identificacaoCertificado, PublicKey chavePublica, String algoritmoAssinatura) {
         this.identificacaoRequerente = identificacaoRequerente;
         this.identificacaoCertificado = identificacaoCertificado;
         this.chavePublica = chavePublica;
         this.algoritmoAssinatura = algoritmoAssinatura;
-        this.chavePrivada = chavePrivada;
+
         this.assinado=false;
     }
 

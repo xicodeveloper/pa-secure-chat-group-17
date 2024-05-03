@@ -19,8 +19,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 
 public class Client {
@@ -29,22 +27,23 @@ public class Client {
     private Socket socket;
     private ObjectInputStream in;
     private ObjectOutputStream out;
-
+private static  int contadorCert=0;
     private String name;
     private int numeroDeClientes;
     private KeyPair keyPair;
     private SecretKey sharedSecretKey;
     private boolean running = true;
     private PublicKey publicKey;
-    private PrivateKey privateKey;
+
     private  final  LinkedList<SecretKey> chavesScretas = new LinkedList<>();
     private final LinkedList<String> nomeCliente = new LinkedList<>();
-    private  static int contadorCert=0;
+    private PrivateKey privateKey;
+
 
     public void start(String namee, int numeroDeClientes) {
         this.numeroDeClientes=numeroDeClientes;
         this.name=namee;
-        contadorCert++;
+contadorCert++;
         if(numeroDeClientes==0){
             nomeCliente.add(null);
             chavesScretas.add(null);
@@ -64,18 +63,19 @@ public class Client {
             out.writeObject(name);
             out.flush();
             try {
-                KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA"); // Usando RSA para gerar as chaves
+                KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("DH");
                 keyPairGenerator.initialize(2048);
-                KeyPair keyPair = keyPairGenerator.generateKeyPair();
-                PublicKey publicKey = keyPair.getPublic();
-                PrivateKey privateKey = keyPair.getPrivate();
+                keyPair = keyPairGenerator.generateKeyPair();
+                // Obter a chave pública do cliente
+                publicKey = keyPair.getPublic();
+                 privateKey = keyPair.getPrivate();
                 String identificacaoCertificado = "Certificado_" + contadorCert;
-                CertificadoUtil cert = new CertificadoUtil(name, identificacaoCertificado, privateKey, publicKey, "SHA256withRSA");
+                CertificadoUtil cert = new CertificadoUtil(name, identificacaoCertificado, publicKey, "SHA256withRSA");
                 String certificadoPEM = cert.gerarCertificadoPEM(); // Gerar o certificado PEM
                 System.out.println(certificadoPEM); // Para debug
                 byte[] hashCertificado = cert.calcularHashCertificado(certificadoPEM); // Calcular o hash do certificado
-                byte[] assinatura = cert.assinarCertificado(hashCertificado, privateKey); // Assinar o certificado
-                cert.salvarCertificado("CA", assinatura); // Salvar o certificado assinado no diretório
+                //byte[] assinatura = cert.assinarCertificado(hashCertificado, privateKey); // Assinar o certificado da erro aqui!!!!
+                cert.salvarCertificado("CA", hashCertificado); // Salvar o certificado assinado no diretório
                 System.out.println(cert.verificarAssinatura());
                 out.writeObject("@newUser");
                 out.flush();
@@ -88,15 +88,6 @@ public class Client {
             e.printStackTrace();
         }
     }
-
-    public PrivateKey getPrivateKey() {
-        return privateKey;
-    }
-
-    public PublicKey getPublicKey() {
-        return publicKey;
-    }
-
     private void atribuirChavesSecretas() throws IOException, ClassNotFoundException, NoSuchAlgorithmException, InvalidKeyException {
         out.writeObject(publicKey);
         out.flush();
@@ -221,45 +212,32 @@ public class Client {
                 mensagemEnviar.setText(""); // Limpar a área de texto após o envio
                 mensagensRecebidas.append(getTimeStamp() + "Tu: " + mensagem + "\n");
                 if (mensagem.equals("@exit")) {
-                    mensagem = this.name + ":" + mensagem;
-                    out.writeObject(mensagem);
-                    out.flush();
-                    socket.close();
-                    clienteFrame.dispose();
+                    sairDoChat();
                     return;
-                } else if (mensagem.startsWith("@")) {
-                    // Extrair os destinatários e a mensagem da string
-                    Pattern pattern = Pattern.compile("@(\\w+)");
-                    Matcher matcher = pattern.matcher(mensagem);
-                    List<String> recipientNames = new ArrayList<>();
-                    while (matcher.find()) {
-                        recipientNames.add(matcher.group(1));
-                    }
+                }
+                else if (mensagem.startsWith("@")) {
+                    // Extrair os nomes dos destinatários da mensagem
                     int spaceIndex = mensagem.indexOf(" ");
                     if (spaceIndex != -1) {
+                        String recipientsString = mensagem.substring(1, spaceIndex);
                         String messageContent = mensagem.substring(spaceIndex + 1);
+                        List<String> recipientNames = Arrays.asList(recipientsString.split(","));
                         mensagem = this.name + ": " + messageContent;
                         byte[] mensagemBytes = mensagem.getBytes();
-                        System.out.println("Destinatários: " + recipientNames);
-                        for (String recipient : recipientNames) {
-                            boolean foundRecipient = false;
-                            for (int j = 0; j < numeroDeClientes; j++) {
-                                if (Objects.equals(nomeCliente.get(j), recipient)) {
+                        for (int j = 0; j < numeroDeClientes; j++) {
+                            for (int k = 0; k < recipientNames.size(); k++) {
+                                if (Objects.equals(nomeCliente.get(j), recipientNames.get(k))) {
                                     sharedSecretKey = chavesScretas.get(j);
                                     byte[] ciphertext = encryptWithSecretKey(mensagemBytes, sharedSecretKey);
                                     String ciphertextString = ciphertextToString(ciphertext);
                                     String ClienteMSG = nomeCliente.get(j) + ":" + ciphertextString;
                                     out.writeObject(ClienteMSG);
                                     out.flush();
-                                    foundRecipient = true;
                                 }
-                            }
-                            if (!foundRecipient) {
-                                System.err.println("Destinatário não encontrado: " + recipient);
                             }
                         }
                     } else {
-                        System.err.println("Formato inválido para mensagem privada: " + mensagem);
+                        System.err.println("Invalid format for private message: " + mensagem);
                     }
                 } else {
                     mensagem = this.name + ": " + mensagem;

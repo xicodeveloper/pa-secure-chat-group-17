@@ -1,9 +1,12 @@
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+
 public class Main {
     public static void main(String[] args) {
         Lock trinco = new ReentrantLock();
+
+
         // Iniciar o servidor em uma thread separada
         new Thread(() -> {
             Server server = new Server();
