@@ -36,7 +36,7 @@ public class Client {
     private SecretKey sharedSecretKey;
     private boolean running = true;
     private PublicKey publicKey;
-
+    private PrivateKey privateKey;
     private  final  LinkedList<SecretKey> chavesScretas = new LinkedList<>();
     private final LinkedList<String> nomeCliente = new LinkedList<>();
 
@@ -69,6 +69,8 @@ public class Client {
                 keyPair = keyPairGenerator.generateKeyPair();
                 // Obter a chave pública do cliente
                 publicKey = keyPair.getPublic();
+                // Obter a chave privada do cliente
+                 privateKey = keyPair.getPrivate();
                 out.writeObject("@newUser");
                 out.flush();
                 Thread.sleep(500);
