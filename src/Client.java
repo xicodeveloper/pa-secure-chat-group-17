@@ -71,6 +71,8 @@ public class Client {
                 publicKey = keyPair.getPublic();
                 // Obter a chave privada do cliente
                  privateKey = keyPair.getPrivate();
+                 CertificadoUtil cert=new CertificadoUtil(name, publicKey, privateKey);
+                System.out.println(cert.Cert());
                 out.writeObject("@newUser");
                 out.flush();
                 Thread.sleep(500);
@@ -82,6 +84,15 @@ public class Client {
             e.printStackTrace();
         }
     }
+
+    public PrivateKey getPrivateKey() {
+        return privateKey;
+    }
+
+    public PublicKey getPublicKey() {
+        return publicKey;
+    }
+
     private void atribuirChavesSecretas() throws IOException, ClassNotFoundException, NoSuchAlgorithmException, InvalidKeyException {
         out.writeObject(publicKey);
         out.flush();
