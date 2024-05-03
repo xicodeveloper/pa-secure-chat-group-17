@@ -39,12 +39,12 @@ public class Client {
     private PrivateKey privateKey;
     private  final  LinkedList<SecretKey> chavesScretas = new LinkedList<>();
     private final LinkedList<String> nomeCliente = new LinkedList<>();
-
+    private  static int contadorCert=0;
 
     public void start(String namee, int numeroDeClientes) {
         this.numeroDeClientes=numeroDeClientes;
         this.name=namee;
-
+        contadorCert++;
         if(numeroDeClientes==0){
             nomeCliente.add(null);
             chavesScretas.add(null);
@@ -64,15 +64,19 @@ public class Client {
             out.writeObject(name);
             out.flush();
             try {
-                KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("DH");
+                KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA"); // Usando RSA para gerar as chaves
                 keyPairGenerator.initialize(2048);
-                keyPair = keyPairGenerator.generateKeyPair();
-                // Obter a chave pública do cliente
-                publicKey = keyPair.getPublic();
-                // Obter a chave privada do cliente
-                 privateKey = keyPair.getPrivate();
-                 CertificadoUtil cert=new CertificadoUtil(name, publicKey, privateKey);
-                System.out.println(cert.Cert());
+                KeyPair keyPair = keyPairGenerator.generateKeyPair();
+                PublicKey publicKey = keyPair.getPublic();
+                PrivateKey privateKey = keyPair.getPrivate();
+                String identificacaoCertificado = "Certificado_" + contadorCert;
+                CertificadoUtil cert = new CertificadoUtil(name, identificacaoCertificado, privateKey, publicKey, "SHA256withRSA");
+                String certificadoPEM = cert.gerarCertificadoPEM(); // Gerar o certificado PEM
+                System.out.println(certificadoPEM); // Para debug
+                byte[] hashCertificado = cert.calcularHashCertificado(certificadoPEM); // Calcular o hash do certificado
+                byte[] assinatura = cert.assinarCertificado(hashCertificado, privateKey); // Assinar o certificado
+                cert.salvarCertificado("CA", assinatura); // Salvar o certificado assinado no diretório
+                System.out.println(cert.verificarAssinatura());
                 out.writeObject("@newUser");
                 out.flush();
                 Thread.sleep(500);
