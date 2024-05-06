@@ -51,7 +51,14 @@ public String verificarAssinatura(){
     }
 
     // Salva o certificado em formato PEM em um diretório específico
+
     public void salvarCertificado(String diretorio, byte[] assinatura) {
+        // Cria o diretório se não existir
+        File diretorioArquivo = new File(diretorio);
+        if (!diretorioArquivo.exists()) {
+            diretorioArquivo.mkdirs(); // Cria o diretório e os diretórios pai, se necessário
+        }
+
         String nomeArquivo = "certificado_" + identificacaoRequerente + ".pem";
         String caminhoArquivo = diretorio + File.separator + nomeArquivo;
 
@@ -74,6 +81,7 @@ public String verificarAssinatura(){
             e.printStackTrace();
         }
     }
+
 
 
     // Calcular o valor hash do certificado ainda por assinar usando SHA256

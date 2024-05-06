@@ -63,7 +63,7 @@ contadorCert++;
             out.writeObject(name);
             out.flush();
             try {
-                KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("DH");
+                KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
                 keyPairGenerator.initialize(2048);
                 keyPair = keyPairGenerator.generateKeyPair();
                 // Obter a chave pública do cliente
@@ -74,10 +74,11 @@ contadorCert++;
                 String certificadoPEM = cert.gerarCertificadoPEM(); // Gerar o certificado PEM
                 System.out.println(certificadoPEM); // Para debug
                 byte[] hashCertificado = cert.calcularHashCertificado(certificadoPEM); // Calcular o hash do certificado
-                //byte[] assinatura = cert.assinarCertificado(hashCertificado, privateKey); // Assinar o certificado da erro aqui!!!!
-                cert.salvarCertificado("CA", hashCertificado); // Salvar o certificado assinado no diretório
+                byte[] assinatura = cert.assinarCertificado(hashCertificado, privateKey); // Assinar o certificado da erro aqui!!!!
+                cert.salvarCertificado("CA", assinatura); // Salvar o certificado assinado no diretório
                 System.out.println(cert.verificarAssinatura());
                 out.writeObject("@newUser");
+                //out.writeObject(certificadoPEM);
                 out.flush();
                 Thread.sleep(500);
                 loop();
