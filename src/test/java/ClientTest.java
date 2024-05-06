@@ -1,3 +1,5 @@
+package test.java;
+
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import java.security.PublicKey;
@@ -71,12 +73,7 @@ class ClientTest {
     void testCriarInterface() {
 
         Client client = new Client();
-
-
-
         client.criarInterface();
-
-
         assertTrue(client.isInterfaceCreated());
     }
 
@@ -84,12 +81,7 @@ class ClientTest {
     void testLoop() {
 
         Client client = new Client();
-
-
-
         client.loop();
-
-
         assertTrue(client.isLoopRunning());
     }
 
@@ -101,9 +93,7 @@ class ClientTest {
 
 
     private LinkedList<SecretKey> mockChavesSecretas() {
-
         LinkedList<SecretKey> chavesSecretas = new LinkedList<>();
-
         return chavesSecretas;
     }
 
