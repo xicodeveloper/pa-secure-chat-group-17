@@ -15,13 +15,7 @@ public class LoginInterface {
     private Properties properties;
 
     public LoginInterface() {
-        try {
-            // Carregar as configurações do arquivo password.config
-            properties = new Properties();
-            properties.load(new FileInputStream("password.config"));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+
 
         frame = new JFrame("Login");
         frame.setSize(300, 150);
