@@ -19,6 +19,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 public class Client {
@@ -55,7 +57,8 @@ public class Client {
             byte[] hashCertificado = cert.calcularHashCertificado(certificadoPEM); // Calcular o hash do certificado
             byte[] assinatura = cert.assinarCertificado(hashCertificado, keyPairRSA.getPrivate()); // Assinar o certificado da erro aqui!!!!
             cert.salvarCertificado("CA", assinatura); // Salvar o certificado assinado no diretório
-            System.out.println(cert.verificarAssinatura());
+            if(!cert.isAssinado())
+                return;
         }catch (Exception e) {
             e.printStackTrace();
         }

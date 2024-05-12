@@ -50,6 +50,10 @@ public class CertificadoUtil {
         return certificadoPEM;
     }
 
+    public boolean isAssinado() {
+        return assinado;
+    }
+
     /**
      * Método para verificar o estado da assinatura.
      *
