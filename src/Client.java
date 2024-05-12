@@ -19,6 +19,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 public class Client {
@@ -219,32 +221,45 @@ public class Client {
                 mensagemEnviar.setText(""); // Limpar a área de texto após o envio
                 mensagensRecebidas.append(getTimeStamp() + "Tu: " + mensagem + "\n");
                 if (mensagem.equals("@exit")) {
-                    sairDoChat();
+                    mensagem = this.name + ":" + mensagem;
+                    out.writeObject(mensagem);
+                    out.flush();
+                    socket.close();
+                    clienteFrame.dispose();
                     return;
-                }
-                else if (mensagem.startsWith("@")) {
-                    // Extrair os nomes dos destinatários da mensagem
+                } else if (mensagem.startsWith("@")) {
+                    // Extrair os destinatários e a mensagem da string
+                    Pattern pattern = Pattern.compile("@(\\w+)");
+                    Matcher matcher = pattern.matcher(mensagem);
+                    List<String> recipientNames = new ArrayList<>();
+                    while (matcher.find()) {
+                        recipientNames.add(matcher.group(1));
+                    }
                     int spaceIndex = mensagem.indexOf(" ");
                     if (spaceIndex != -1) {
-                        String recipientsString = mensagem.substring(1, spaceIndex);
                         String messageContent = mensagem.substring(spaceIndex + 1);
-                        List<String> recipientNames = Arrays.asList(recipientsString.split(","));
                         mensagem = this.name + ": " + messageContent;
                         byte[] mensagemBytes = mensagem.getBytes();
-                        for (int j = 0; j < numeroDeClientes; j++) {
-                            for (int k = 0; k < recipientNames.size(); k++) {
-                                if (Objects.equals(nomeCliente.get(j), recipientNames.get(k))) {
+                        System.out.println("Destinatários: " + recipientNames);
+                        for (String recipient : recipientNames) {
+                            boolean foundRecipient = false;
+                            for (int j = 0; j < numeroDeClientes; j++) {
+                                if (Objects.equals(nomeCliente.get(j), recipient)) {
                                     sharedSecretKey = chavesScretas.get(j);
                                     byte[] ciphertext = encryptWithSecretKey(mensagemBytes, sharedSecretKey);
                                     String ciphertextString = ciphertextToString(ciphertext);
                                     String ClienteMSG = nomeCliente.get(j) + ":" + ciphertextString;
                                     out.writeObject(ClienteMSG);
                                     out.flush();
+                                    foundRecipient = true;
                                 }
+                            }
+                            if (!foundRecipient) {
+                                System.err.println("Destinatário não encontrado: " + recipient);
                             }
                         }
                     } else {
-                        System.err.println("Invalid format for private message: " + mensagem);
+                        System.err.println("Formato inválido para mensagem privada: " + mensagem);
                     }
                 } else {
                     mensagem = this.name + ": " + mensagem;
