@@ -122,6 +122,7 @@ class ClientHandler extends Thread {
             String name = (String) input;
             this.clientName = name;
         }
+    
         this.joinTime = LocalDateTime.now(); // Record the time when the client joined
         System.out.println((String) clientName + " connected: " + socket + " at " + formatTime(joinTime));
     }
