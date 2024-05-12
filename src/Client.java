@@ -44,6 +44,22 @@ public class Client {
         this.numeroDeClientes=numeroDeClientes;
         this.name=namee;
         contadorCert++;
+        try{
+            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
+            keyPairGenerator.initialize(2048); // Tamanho da chave
+            KeyPair keyPairRSA = keyPairGenerator.generateKeyPair();
+            String identificacaoCertificado = "Certificado_" + contadorCert;
+            CertificadoUtil cert = new CertificadoUtil(name, identificacaoCertificado, keyPairRSA.getPublic(), "SHA256withRSA");
+            String certificadoPEM = cert.gerarCertificadoPEM(); // Gerar o certificado PEM
+            System.out.println(certificadoPEM); // Para debug
+            byte[] hashCertificado = cert.calcularHashCertificado(certificadoPEM); // Calcular o hash do certificado
+            byte[] assinatura = cert.assinarCertificado(hashCertificado, keyPairRSA.getPrivate()); // Assinar o certificado da erro aqui!!!!
+            cert.salvarCertificado("CA", assinatura); // Salvar o certificado assinado no diretório
+            System.out.println(cert.verificarAssinatura());
+        }catch (Exception e) {
+            e.printStackTrace();
+        }
+
         if(numeroDeClientes==0){
             nomeCliente.add(null);
             chavesScretas.add(null);
@@ -68,15 +84,6 @@ public class Client {
                 keyPair = keyPairGenerator.generateKeyPair();
                 // Obter a chave pública do cliente
                 publicKey = keyPair.getPublic();
-                privateKey = keyPair.getPrivate();
-                String identificacaoCertificado = "Certificado_" + contadorCert;
-                CertificadoUtil cert = new CertificadoUtil(name, identificacaoCertificado, publicKey, "SHA256withRSA");
-                String certificadoPEM = cert.gerarCertificadoPEM(); // Gerar o certificado PEM
-                System.out.println(certificadoPEM); // Para debug
-                byte[] hashCertificado = cert.calcularHashCertificado(certificadoPEM); // Calcular o hash do certificado
-                //byte[] assinatura = cert.assinarCertificado(hashCertificado, privateKey); // Assinar o certificado da erro aqui!!!!
-                cert.salvarCertificado("CA", hashCertificado); // Salvar o certificado assinado no diretório
-                System.out.println(cert.verificarAssinatura());
                 out.writeObject("@newUser");
                 out.flush();
                 Thread.sleep(500);
