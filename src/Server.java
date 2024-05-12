@@ -9,7 +9,11 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 
-public class Server{
+/**
+ * A classe que representa o servidor de chat.
+ */
+public class Server {
+    /** A lista de manipuladores de cliente conectados ao servidor. */
     public static final LinkedList<ClientHandler> clients = new LinkedList<>();
 
     private JFrame serverFrame;
@@ -19,6 +23,9 @@ public class Server{
 
     String nomeClienteNovo;
 
+    /**
+     * Método para exibir a interface gráfica do servidor.
+     */
     private void serverInterface() {
         serverFrame = new JFrame("Interface do Server");
         serverFrame.setSize(300, 150);
@@ -52,10 +59,18 @@ public class Server{
         // Exibe a interface do servidor
         serverFrame.setVisible(true);
     }
-    public static void downnrClientes(){
+
+    /**
+     * Método para decrementar o número de clientes.
+     */
+    public static void downnrClientes() {
         nrClientesMenos1--;
     }
 
+    /**
+     * Método para iniciar o servidor.
+     * @param trinco O trinco usado para controle de concorrência.
+     */
     public void start(Lock trinco) {
         try {
             serverInterface();
@@ -69,13 +84,19 @@ public class Server{
                 ClientHandler clientHandler = new ClientHandler(socket, trinco);
                 clients.add(clientHandler);
                 clientHandler.start();
-                broadcastGlobalExcept(nomeClienteNovo+": entrou no chat",clientHandler);
+                broadcastGlobalExcept(nomeClienteNovo + ": entrou no chat", clientHandler);
             }
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
     }
 
+    /**
+     * Método para enviar a chave pública a todos os clientes, exceto um cliente específico.
+     * @param publicKey A chave pública a ser enviada.
+     * @param clienttName O nome do cliente associado à chave pública.
+     * @param excludeClient O cliente a ser excluído da lista de destinatários.
+     */
     public static void broadcastKey(PublicKey publicKey, String clienttName, ClientHandler excludeClient) {
         for (ClientHandler client : clients) {
             if (client != excludeClient) {
@@ -84,6 +105,11 @@ public class Server{
         }
     }
 
+    /**
+     * Método para enviar uma mensagem a um cliente específico.
+     * @param message A mensagem a ser enviada.
+     * @param cliente O cliente de destino.
+     */
     public static void broadcast(String message, String cliente) {
         for (ClientHandler client : clients) {
             if (Objects.equals(client.getClientName(), cliente)) {
@@ -91,12 +117,23 @@ public class Server{
             }
         }
     }
+
+    /**
+     * Método para enviar uma mensagem para todos os clientes conectados.
+     * @param message A mensagem a ser enviada.
+     */
     public static void broadcastGlobal(String message) {
         for (ClientHandler client : clients) {
             client.sendMessage(message);
         }
     }
-    public static void broadcastGlobalExcept(String message,ClientHandler excludeClient) {
+
+    /**
+     * Método para enviar uma mensagem para todos os clientes conectados, exceto um cliente específico.
+     * @param message A mensagem a ser enviada.
+     * @param excludeClient O cliente a ser excluído da lista de destinatários.
+     */
+    public static void broadcastGlobalExcept(String message, ClientHandler excludeClient) {
         for (ClientHandler client : clients) {
             if (client != excludeClient) {
                 client.sendMessage(message);
@@ -105,6 +142,9 @@ public class Server{
     }
 }
 
+/**
+ * A classe que lida com a comunicação com cada cliente individual.
+ */
 class ClientHandler extends Thread {
     private final ObjectInputStream reader;
     private final ObjectOutputStream writer;
@@ -112,6 +152,13 @@ class ClientHandler extends Thread {
     private final Lock trinco;
     private final LocalDateTime joinTime;
 
+    /**
+     * Construtor para inicializar o manipulador do cliente.
+     * @param socket O soquete de comunicação com o cliente.
+     * @param trinco O trinco usado para controle de concorrência.
+     * @throws IOException Se ocorrer um erro de entrada/saída.
+     * @throws ClassNotFoundException Se a classe não puder ser encontrada.
+     */
     public ClientHandler(Socket socket, Lock trinco) throws IOException, ClassNotFoundException {
         this.trinco = trinco;
         this.reader = new ObjectInputStream(socket.getInputStream());
@@ -127,15 +174,27 @@ class ClientHandler extends Thread {
         System.out.println((String) clientName + " connected: " + socket + " at " + formatTime(joinTime));
     }
 
+    /**
+     * Método para formatar o tempo.
+     * @param time O tempo a ser formatado.
+     * @return Uma string representando o tempo formatado.
+     */
     private String formatTime(LocalDateTime time) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         return time.format(formatter);
     }
 
+    /**
+     * Método para obter o nome do cliente associado a este manipulador.
+     * @return O nome do cliente.
+     */
     public String getClientName() {
         return clientName;
     }
 
+    /**
+     * O loop de execução do manipulador do cliente.
+     */
     public void run() {
         while (true) {
             try {
@@ -154,9 +213,9 @@ class ClientHandler extends Thread {
                 }
                 if (input instanceof String) {
                     String message = (String) input;
-                    if(Objects.equals(message,"@newUser")){
-                        Server.broadcastGlobalExcept("@newUser",this);
-                    }else {
+                    if (Objects.equals(message, "@newUser")) {
+                        Server.broadcastGlobalExcept("@newUser", this);
+                    } else {
                         System.out.println("Received from client " + clientName + ": " + message);
                         // Mensagem não é uma mensagem privada, envie para todos os clientes
                         String[] partes = message.split(":", 2);
@@ -187,6 +246,11 @@ class ClientHandler extends Thread {
         return;
     }
 
+    /**
+     * Método para enviar a chave pública a este cliente.
+     * @param publicKey A chave pública a ser enviada.
+     * @param clienttName O nome do cliente associado à chave pública.
+     */
     public void sendKey(PublicKey publicKey, String clienttName) {
         try {
             writer.writeObject(publicKey);
@@ -198,6 +262,10 @@ class ClientHandler extends Thread {
         }
     }
 
+    /**
+     * Método para enviar uma mensagem para este cliente.
+     * @param message A mensagem a ser enviada.
+     */
     public void sendMessage(String message) {
         try {
             writer.writeObject(message);

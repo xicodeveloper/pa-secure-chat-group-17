@@ -5,6 +5,9 @@ import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Base64;
 
+/**
+ * Classe utilitária para manipulação de certificados digitais.
+ */
 public class CertificadoUtil {
     private String identificacaoRequerente;
     private String identificacaoCertificado;
@@ -13,17 +16,28 @@ public class CertificadoUtil {
     private PrivateKey chavePrivada;
     public boolean assinado;
 
+    /**
+     * Construtor da classe CertificadoUtil.
+     *
+     * @param identificacaoRequerente Identificação do requerente.
+     * @param identificacaoCertificado Identificação do certificado.
+     * @param chavePublica Chave pública do requerente.
+     * @param algoritmoAssinatura Algoritmo de assinatura utilizado.
+     */
     public CertificadoUtil(String identificacaoRequerente, String identificacaoCertificado, PublicKey chavePublica, String algoritmoAssinatura) {
         this.identificacaoRequerente = identificacaoRequerente;
         this.identificacaoCertificado = identificacaoCertificado;
         this.chavePublica = chavePublica;
         this.algoritmoAssinatura = algoritmoAssinatura;
 
-        this.assinado=false;
+        this.assinado = false;
     }
 
-    // Elabora o certificado no formato PEM com informações adicionais
-    // Elabora o certificado no formato PEM com informações adicionais
+    /**
+     * Método para gerar um certificado no formato PEM.
+     *
+     * @return O certificado gerado no formato PEM.
+     */
     public String gerarCertificadoPEM() {
         String estado = assinado ? "Assinado" : "Ainda por assinar";
         String certificadoPEM = "-----BEGIN CERTIFICATE-----\n";
@@ -35,28 +49,42 @@ public class CertificadoUtil {
         certificadoPEM += "-----END CERTIFICATE-----";
         return certificadoPEM;
     }
-public String verificarAssinatura(){
-        String result="Estado da Assinatura: ";
-        if(assinado==true){
-            result+= "Assinado";
-        }else{
-            result+="Negado não assinado";
-        }
-      return result;
-}
 
-    // Método auxiliar para codificar em Base64
+    /**
+     * Método para verificar o estado da assinatura.
+     *
+     * @return O estado da assinatura.
+     */
+    public String verificarAssinatura() {
+        String result = "Estado da Assinatura: ";
+        if (assinado) {
+            result += "Assinado";
+        } else {
+            result += "Negado, não assinado";
+        }
+        return result;
+    }
+
+    /**
+     * Método auxiliar para codificar em Base64.
+     *
+     * @param bytes Array de bytes a ser codificado.
+     * @return A string codificada em Base64.
+     */
     private String encodeToBase64(byte[] bytes) {
         return Base64.getEncoder().encodeToString(bytes);
     }
 
-    // Salva o certificado em formato PEM em um diretório específico
-
+    /**
+     * Método para salvar o certificado em formato PEM em um diretório específico.
+     *
+     * @param diretorio Diretório de destino.
+     * @param assinatura Assinatura a ser adicionada ao certificado.
+     */
     public void salvarCertificado(String diretorio, byte[] assinatura) {
-        // Cria o diretório se não existir
         File diretorioArquivo = new File(diretorio);
         if (!diretorioArquivo.exists()) {
-            diretorioArquivo.mkdirs(); // Cria o diretório e os diretórios pai, se necessário
+            diretorioArquivo.mkdirs();
         }
 
         String nomeArquivo = "certificado_" + identificacaoRequerente + ".pem";
@@ -75,38 +103,66 @@ public String verificarAssinatura(){
             } else {
                 writer.write("\nAssinatura\n");
                 writer.write(certificadoPEM);
-                writer.write(Base64.getEncoder().encodeToString(assinatura)); // Adiciona a assinatura ao final do arquivo
+                writer.write(Base64.getEncoder().encodeToString(assinatura));
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-
-
-    // Calcular o valor hash do certificado ainda por assinar usando SHA256
+    /**
+     * Método para calcular o valor hash do certificado ainda por assinar usando SHA256.
+     *
+     * @param certificado Certificado a ser hashado.
+     * @return O valor hash do certificado.
+     * @throws NoSuchAlgorithmException Caso o algoritmo de hash não seja encontrado.
+     */
     public byte[] calcularHashCertificado(String certificado) throws NoSuchAlgorithmException {
         byte[] certificadoBytes = certificado.getBytes();
         return calcularHash(certificadoBytes);
     }
 
-    // Produzir a assinatura digital do certificado usando a chave privada da CA e o algoritmo RSA
+    /**
+     * Método para produzir a assinatura digital do certificado usando a chave privada da CA e o algoritmo RSA.
+     *
+     * @param dados Dados a serem assinados.
+     * @param chavePrivada Chave privada utilizada para assinar.
+     * @return A assinatura digital do certificado.
+     * @throws NoSuchAlgorithmException Caso o algoritmo de assinatura não seja encontrado.
+     * @throws InvalidKeyException Caso a chave privada seja inválida.
+     * @throws SignatureException Caso ocorra algum erro durante a assinatura.
+     */
     public byte[] assinarCertificado(byte[] dados, PrivateKey chavePrivada) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
         return assinar(dados, chavePrivada);
     }
 
-    // Método para calcular o valor hash usando SHA256
+    /**
+     * Método para calcular o valor hash usando SHA256.
+     *
+     * @param dados Dados a serem hashados.
+     * @return O valor hash dos dados.
+     * @throws NoSuchAlgorithmException Caso o algoritmo de hash não seja encontrado.
+     */
     private byte[] calcularHash(byte[] dados) throws NoSuchAlgorithmException {
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         return md.digest(dados);
     }
 
-    // Método para produzir a assinatura digital usando a chave privada da CA e o algoritmo RSA
+    /**
+     * Método para produzir a assinatura digital usando a chave privada da CA e o algoritmo RSA.
+     *
+     * @param dados Dados a serem assinados.
+     * @param chavePrivada Chave privada utilizada para assinar.
+     * @return A assinatura digital dos dados.
+     * @throws NoSuchAlgorithmException Caso o algoritmo de assinatura não seja encontrado.
+     * @throws InvalidKeyException Caso a chave privada seja inválida.
+     * @throws SignatureException Caso ocorra algum erro durante a assinatura.
+     */
     private byte[] assinar(byte[] dados, PrivateKey chavePrivada) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
         Signature assinatura = Signature.getInstance("SHA256withRSA");
         assinatura.initSign(chavePrivada);
         assinatura.update(dados);
-        assinado=true;
+        assinado = true;
         return assinatura.sign();
     }
 }

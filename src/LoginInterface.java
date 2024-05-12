@@ -5,6 +5,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
 
+/**
+ * Uma interface simples para login com campos de usuário e senha.
+ */
 public class LoginInterface {
     private JFrame frame;
     private JTextField usernameField;
@@ -14,28 +17,33 @@ public class LoginInterface {
     private String storedUsername;
     private Properties properties;
 
+    /**
+     * Construtor da classe LoginInterface.
+     * Inicializa a interface gráfica para o login.
+     */
     public LoginInterface() {
-
-
+        // Configuração da janela de login
         frame = new JFrame("Login");
         frame.setSize(300, 150);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
+        // Configuração do painel
         JPanel panel = new JPanel();
         panel.setLayout(new GridLayout(3, 2));
 
+        // Campo de entrada de usuário
         JLabel usernameLabel = new JLabel("Username:");
         panel.add(usernameLabel);
-
         usernameField = new JTextField();
         panel.add(usernameField);
 
+        // Campo de entrada de senha
         JLabel passwordLabel = new JLabel("Password:");
         panel.add(passwordLabel);
-
         passwordField = new JPasswordField();
         panel.add(passwordField);
 
+        // Botão de login
         loginButton = new JButton("Login");
         loginButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
@@ -50,7 +58,7 @@ public class LoginInterface {
                 // Verificar se as credenciais fornecidas correspondem às armazenadas no arquivo de configuração
                 if (username.equals(storedUsername) && password.equals(storedPassword)) {
                     setLogin(true);
-                    setstoredUsername(storedUsername);
+                    setStoredUsername(storedUsername);
                 } else {
                     JOptionPane.showMessageDialog(frame, "Credenciais inválidas. Tente novamente.", "Erro de Login", JOptionPane.ERROR_MESSAGE);
                 }
@@ -58,27 +66,48 @@ public class LoginInterface {
         });
         panel.add(loginButton);
 
+        // Adicionando o painel à janela
         frame.add(panel);
         frame.setVisible(true);
     }
-public void setstoredUsername(String storedUsername){
-         this.storedUsername=storedUsername;
-}
-public String getstoredUsername(){
+
+    /**
+     * Define o nome de usuário armazenado após o login bem-sucedido.
+     * @param storedUsername O nome de usuário armazenado.
+     */
+    public void setStoredUsername(String storedUsername) {
+        this.storedUsername = storedUsername;
+    }
+
+    /**
+     * Obtém o nome de usuário armazenado após o login bem-sucedido.
+     * @return O nome de usuário armazenado.
+     */
+    public String getStoredUsername() {
         return this.storedUsername;
-}
-    // Método para configurar o status de login
+    }
+
+    /**
+     * Configura o status de login.
+     * @param success O status de login (true se o login foi bem-sucedido, false caso contrário).
+     */
     public synchronized void setLogin(boolean success) {
         loginSuccessful = success;
         notifyAll(); // Notificar todas as threads que estão esperando pelo login
     }
 
-    // Método para obter o status de login
+    /**
+     * Obtém o status de login.
+     * @return true se o login foi bem-sucedido, false caso contrário.
+     */
     public synchronized boolean getLogin() {
         return loginSuccessful;
     }
 
-    // Método para aguardar o login ser bem-sucedido
+    /**
+     * Aguarda até que o login seja bem-sucedido.
+     * @return true se o login foi bem-sucedido, false caso contrário.
+     */
     public synchronized boolean waitForLogin() {
         while (!getLogin()) {
             try {
@@ -89,6 +118,4 @@ public String getstoredUsername(){
         }
         return loginSuccessful;
     }
-
-
 }
